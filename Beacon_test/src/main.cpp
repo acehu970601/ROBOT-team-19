@@ -6,15 +6,20 @@
 
   //We want an analog pin that is  able to withstand up to 20mA of current for photoTransistor detection circuit 
   #define photoTransistorPin       21
+  #define beaconThreshold          220
+  #define signal_diff              5
+  #define count_slope              5
 
 //Variables
   u_int16_t photoTransistorVoltage = 0;
 
   //The peak height of the most recent 1mS of scanning voltages
-  u_int16_t newPeakHeight = 0;
+  u_int16_t newPeakHeight = 1000;
 
   //The peak height of the second most recent 1mS of scanning voltages
   u_int16_t oldPeakHeight = 0;
+  // count how many times the difference in voltage in small
+  u_int16_t count=0;
 
   bool beaconDetected = false;
   bool beginningBeaconSearch = true;
@@ -33,7 +38,7 @@
 void setup() {
   // put your setup code here, to run once:
   pinMode(photoTransistorPin, INPUT);
-  Serial.begin(9600);
+  Serial.begin(960000);
 }
 
 void loop() {
@@ -50,12 +55,12 @@ void loop() {
 //will equal the maximum peak height for that 1mS interval.
 void findBeacon(void) {
   if (beginningBeaconSearch) {
-    peakTracker.begin(peakHeightComparison, 1000);
+    peakTracker.begin(peakHeightComparison, 1000000);
     beginningBeaconSearch = false;
   }
   if (beaconDetected == false) {
     photoTransistorVoltage = analogRead(photoTransistorPin);
-    if (photoTransistorVoltage > newPeakHeight) {
+    if (photoTransistorVoltage < newPeakHeight) {
       newPeakHeight = photoTransistorVoltage;
     }
   }
@@ -66,11 +71,22 @@ void findBeacon(void) {
 //the oldPeakHeight is set to equal the newPeakHeight as the new cycle begins. If the newPeakHeight
 //is less than the oldPeakHeight, then the beacon is found 
 void peakHeightComparison(void) {
-  if (newPeakHeight >= oldPeakHeight) {
-    oldPeakHeight = newPeakHeight;
-  } else {
+  Serial.println(newPeakHeight);
+  // if (newPeakHeight >= oldPeakHeight) {
+  //   oldPeakHeight = newPeakHeight;
+  // } else {
+  //   beaconDetected = true;
+  // }
+
+  // case when signal about to hit the max
+  if (abs(newPeakHeight-oldPeakHeight)<signal_diff && newPeakHeight<beaconThreshold){
+    count++;
+  }
+  else{
+    oldPeakHeight=newPeakHeight;
+  }
+  if (count>=count_slope){
     beaconDetected = true;
   }
-  //Serial.print("Old Peak Height = " + oldPeakHeight);
-  //Serial.println(", New Peak Height = " + newPeakHeight);
+
 }
