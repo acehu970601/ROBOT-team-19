@@ -10,6 +10,7 @@
   #define signal_diff              5
   #define count_slope              5
 
+  const int ledPin = LED_BUILTIN; 
 //Variables
   u_int16_t photoTransistorVoltage = 0;
 
@@ -37,6 +38,8 @@
 
 void setup() {
   // put your setup code here, to run once:
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, HIGH);
   pinMode(photoTransistorPin, INPUT);
   Serial.begin(960000);
 }
