@@ -16,7 +16,6 @@ bool wallStatus = false;
 void timerCount(void);
 void echoRise(void);
 void echoFall(void);
-void checkWall(void);
 bool eventWallTouched(void);
 
 void setup() {
@@ -36,7 +35,6 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  checkWall();
   if(eventWallTouched()){
     Serial.println("Start pushing wall!");
   }
@@ -62,24 +60,17 @@ void echoFall(){
   dis = (echoFallTime - echoRiseTime)*0.85 - 80; //mm
 }
 
-void checkWall(){
+bool eventWallTouched(){
   static int wallThres = wallThresLow;
-  if(dis < wallThres){
-    wallStatus = true;
+  static int prevDis = 8888888;
+  bool event = false;
+  if(dis < wallThres && prevDis >= wallThres){
+    event = true;
     wallThres = wallThresHigh;
   }
-  if(dis > wallThres){
-    wallStatus = false;
+  if(dis >= wallThres && prevDis < wallThres){
     wallThres = wallThresLow;
   }
-}
-
-bool eventWallTouched(){
-  static bool prevWallStatus = false;
-  bool event = false;
-  if(prevWallStatus == false && wallStatus == true){
-    event = true;
-  }
-  prevWallStatus = wallStatus;
+  prevDis = dis;
   return event;
 }
