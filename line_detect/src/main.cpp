@@ -15,6 +15,7 @@ void setup() {
   // put your setup code here, to run once:
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);
+  pinMode(linedetector, INPUT);
   Serial.begin(96000);
 }
 
