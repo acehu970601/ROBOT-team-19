@@ -9,12 +9,12 @@
 #define leftMotorDirPin2         6
 #define rightMotorDirPin1        7
 #define rightMotorDirPin2        8
-#define photoTransistorPin       16
+#define photoTransistorPin       17
 
 //Threshold values
-#define beaconValueThre          220
+#define beaconValueThre          350
 #define beaconDiffThre           5
-#define beaconCountThre          5
+#define beaconCountThre          3
 
 //State
 typedef enum {
@@ -23,15 +23,15 @@ typedef enum {
 
 //Timer
 IntervalTimer peakTracker;
-static Metro restTimer = Metro(2000);
+static Metro restTimer = Metro(3000);
 static Metro backTimer = Metro(1000);
 
 //Variables
-States_t state;
+States_t state = STATE_REST;
 //Motor
 const int forCoeff = 50;
 const int backCoeff = 50;
-const int turnCoeff = 30;
+const int turnCoeff = 25;
 //Beacon
 unsigned int photoTransistorVoltage = 2000;
 unsigned int peakHeight = 2000;
@@ -79,7 +79,7 @@ void loop() {
       break;
     case STATE_BEACON:
       detectBeacon();
-      if(beaconDetected()) moveBackward();
+      if(beaconDetected()) rest();
       break;
     case STATE_BACKWARD:
       if(backTimerExpired()) rest();
@@ -95,6 +95,11 @@ bool restTimerExpired(){
 
 void startDetectingBeacon(){
   state = STATE_BEACON;
+//  digitalWrite(ledPin, HIGH);
+//  photoTransistorVoltage = 2000;
+//  peakHeight = 2000;
+//  oldPeakHeight = 2000;
+//  beaconCount=0;
   leftMotorBack(turnCoeff);
   rightMotorFor(turnCoeff);
   peakTracker.begin(peakHeightComparison, 1000);
@@ -124,6 +129,7 @@ bool backTimerExpired(){
 
 void rest(){
   state = STATE_REST;
+//  digitalWrite(ledPin, LOW);
   restTimer.reset();
   leftMotorStop();
   rightMotorStop();
@@ -175,6 +181,7 @@ void detectBeacon(){
 }
 
 void peakHeightComparison(){
+  Serial.println(peakHeight);
   if (abs(peakHeight-oldPeakHeight) < beaconDiffThre && peakHeight < beaconValueThre){
     beaconCount++;
   }
