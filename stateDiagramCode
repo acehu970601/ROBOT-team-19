@@ -2,8 +2,6 @@
 
 //Pin definitions
 
-//Variables
-
 //Timers
 IntervalTimer wallTimer;
 
@@ -27,7 +25,7 @@ typedef enum {
   ORIENTING, ATTACKING_LEFT_WALL, ATTACKING_RIGHT_WALL, MOVING_FORWARD_TO_ATTACK, MOVING_BACKWARD_TO_ATTACK, MOVING_BACKWARD_TO_ORIENT, TURNING_CLOCKWISE_TO_ATTACK, TURNING_COUNTER_CLOCKWISE_TO_ORIENT, TURNING_COUNTER_CLOCKWISE_TO_ATTACK 
 } States_t;
 
-//State variables
+//Variables
 States_t outerState;
 States_t innerState;
 bool wallDetected;
@@ -218,7 +216,5 @@ Moves left motor in reverse direction
 void leftMotorReverse(void) {
 
 }
-
-
 
 
