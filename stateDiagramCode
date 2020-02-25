@@ -1,0 +1,224 @@
+#include <Arduino.h>
+
+//Pin definitions
+
+//Variables
+
+//Timers
+IntervalTimer wallTimer;
+
+//Functions
+  void checkOrientation(void);
+  void checkBeaconAlignment(void);
+  void checkBackLine(void);
+  void checkFrontRightLine(void);
+  void checkFrontLeftLine(void);
+  void checkWall(void);
+  void startAttackingRightWall(void);
+  void checkBackRightLine(void);
+  void checkBackLeftLine(void);
+  void rightMotorForward(void);
+  void leftMotorForward(void);
+  void rightMotorReverse(void);
+  void leftMotorReverse(void);
+
+//State definitions
+typedef enum {
+  ORIENTING, ATTACKING_LEFT_WALL, ATTACKING_RIGHT_WALL, MOVING_FORWARD_TO_ATTACK, MOVING_BACKWARD_TO_ATTACK, MOVING_BACKWARD_TO_ORIENT, TURNING_CLOCKWISE_TO_ATTACK, TURNING_COUNTER_CLOCKWISE_TO_ORIENT, TURNING_COUNTER_CLOCKWISE_TO_ATTACK 
+} States_t;
+
+//State variables
+States_t outerState;
+States_t innerState;
+bool wallDetected;
+
+
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  outerState = ORIENTING;
+  innerState = TURNING_COUNTER_CLOCKWISE_TO_ORIENT;
+  wallDetected = false;
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  switch (outerState) {
+    case ORIENTING:
+      checkOrientation();
+
+      switch (innerState) {
+        case TURNING_COUNTER_CLOCKWISE_TO_ORIENT:
+          checkBeaconAlignment();
+          break;
+        case MOVING_BACKWARD_TO_ORIENT:
+          checkBackLine();
+          break;
+      }
+
+      break;
+    case ATTACKING_LEFT_WALL:
+
+      switch (innerState) {
+        case MOVING_FORWARD_TO_ATTACK:
+          checkFrontRightLine();
+          checkWall();
+          break;
+        case TURNING_CLOCKWISE_TO_ATTACK:
+          checkFrontLeftLine();
+          break;
+      }  
+
+      break;
+    case ATTACKING_RIGHT_WALL:
+      
+      switch (innerState) {
+        case MOVING_BACKWARD_TO_ATTACK:
+          checkBackRightLine();
+          break;
+        case TURNING_COUNTER_CLOCKWISE_TO_ATTACK:
+          checkBackLeftLine();
+          break;
+      }  
+
+      break;
+  }
+      
+}
+
+
+/*
+If the front left line is detected, then this function should change the outerState to
+ATTACKING_LEFT_WALL, the innerState to MOVING_FORWARD_TO_ATTACK, and make the right
+motor and left motor both go forward.
+*/
+void checkOrientation(void) {
+
+}
+
+
+/*
+If the beacon is aligned, then this function should change the innerState to 
+MOVING_BACKWARD_TO_ORIENT and reverse the right motor. 
+*/
+void checkBeaconAlignment(void) {
+
+}
+
+
+/*
+If the back left or back right line sensors detect a line, then this function should
+change the innerState to TURNING_COUNTER_CLOCKWISE_TO_ORIENT and make the right 
+motor go forward. 
+*/
+void checkBackLine(void) {
+
+}
+
+
+/*
+If the front right line sensor detects a line, then the innerState should be changed
+to TURNING_CLOCKWISE_TO_ATTACK and the right motor should be reversed.
+*/
+void checkFrontRightLine(void) {
+
+}
+
+
+/*
+If the front left line sensor detects a line, then the innerState should be changed
+to MOVING_FORWAR_TO_ATTACK and the right motor should go forward.
+*/
+void checkFrontLeftLine(void) {
+
+}
+
+
+/*
+If the wall has not yet been detected, then this function checks if the wall is close.
+If the wall is close, then the wallTimer begins for 1.5 seconds and the wallDetected
+variable is set to "true". If the wall has been detected, then the function does nothing.
+*/
+void checkWall(void) {
+  if (wallDetected == false) {
+
+    //check if wall is close
+    
+    if (/*Fill this in!!!*/) {
+      wallTimer.begin(startAttackingRightWall, 1500000);
+      wallDetected = true;
+    }
+  } 
+}
+
+
+/*
+This function is called when the wallTiemr expires. It ends the wallTimer, 
+changes the outerState to ATTACKING_RIGHT_WALL, the innerState to 
+MOVING_BACKWARD_TO_ATTACK, and both motors to reverse.
+*/
+void startAttackingRightWall(void) {
+  wallTimer.end();
+  outerState = ATTACKING_RIGHT_WALL;
+  innerState = MOVING_BACKWARD_TO_ATTACK;
+  rightMotorReverse();
+  leftMotorReverse();
+}
+
+
+/*
+If the back right line sensor detects a line, then the innerState should be changed
+to TURNING_COUNTER_CLOCKWISE_TO_ATTACK and the right motor should go forward.
+*/
+void checkBackRightLine(void) {
+
+}
+
+
+/*
+If the back left line sensor detects a line, then the innerState should be changed
+to MOVING_BACKWARD_TO_ATTACK and the right motor should reverse.
+*/
+void checkBackLeftLine(void) {
+
+}
+
+
+
+//Action functions
+
+/*
+Moves right motor in forward direction
+*/
+void rightMotorForward(void) {
+
+}
+
+
+/*
+Moves left motor in forward direction
+*/
+void leftMotorForward(void) {
+
+}
+
+
+/*
+Moves right motor in reverse direction
+*/
+void rightMotorReverse(void) {
+
+}
+
+
+/*
+Moves left motor in reverse direction
+*/
+void leftMotorReverse(void) {
+
+}
+
+
+
+
