@@ -19,7 +19,7 @@
 #define leftFrontLinePin         23
 
 //Threshold values
-#define beaconValueThre          230
+//#define beaconValueThre          230
 #define beaconDiffThre           5
 #define beaconCountThre          3
 
@@ -49,7 +49,7 @@ unsigned int photoTransistorVoltage = 2000;
 unsigned int peakHeight = 2000;
 unsigned int prevVoltage = 0;
 unsigned int currVoltage = 2000;
-unsigned int BeaconThreshold= 2000;
+unsigned int beaconValueThre= 2000;
 unsigned int oldPeakHeight = 2000;
 unsigned int beaconCount=0;
 unsigned int thresholdCount=0;
@@ -339,8 +339,8 @@ void detectBeaconThreshold(){
   if(prevVoltage>currVoltage) thresholdCount++;
   else {thresholdCount=0;}
 
-  if(currVoltage < BeaconThreshold){
-    BeaconThreshold = currVoltage;
+  if(currVoltage < beaconValueThre){
+    beaconValueThre = currVoltage;
   }
   prevVoltage=currVoltage;
   if (thresholdCount>MaxCountThreshold){
@@ -359,5 +359,5 @@ void peakHeightComparison(){
 };
 
 void findBeaconThreshold(){
-  Serial.println(BeaconThreshold);
+  Serial.println(beaconValueThre);
 }
