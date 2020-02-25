@@ -19,6 +19,12 @@ IntervalTimer wallTimer;
   void leftMotorForward(void);
   void rightMotorReverse(void);
   void leftMotorReverse(void);
+  bool frontLeftLineDetected(void);
+  bool frontRightLineDetected(void);
+  bool backLeftLineDetected(void);
+  bool backRightLineDetected(void);
+  bool beaconIsAligned(void);
+  bool wallIsClose(void);
 
 //State definitions
 typedef enum {
@@ -38,6 +44,9 @@ void setup() {
   outerState = ORIENTING;
   innerState = TURNING_COUNTER_CLOCKWISE_TO_ORIENT;
   wallDetected = false;
+
+  rightMotorForward();
+  leftMotorReverse();
 }
 
 void loop() {
@@ -92,7 +101,12 @@ ATTACKING_LEFT_WALL, the innerState to MOVING_FORWARD_TO_ATTACK, and make the ri
 motor and left motor both go forward.
 */
 void checkOrientation(void) {
-
+  if (frontLeftLineDetected()) {
+    outerState = ATTACKING_LEFT_WALL;
+    innerState = MOVING_FORWARD_TO_ATTACK;
+    rightMotorForward();
+    leftMotorForward();
+  }
 }
 
 
@@ -101,7 +115,10 @@ If the beacon is aligned, then this function should change the innerState to
 MOVING_BACKWARD_TO_ORIENT and reverse the right motor. 
 */
 void checkBeaconAlignment(void) {
-
+  if (beaconIsAligned()) {
+    innerState = MOVING_BACKWARD_TO_ORIENT;
+    rightMotorReverse();
+  }
 }
 
 
@@ -111,7 +128,10 @@ change the innerState to TURNING_COUNTER_CLOCKWISE_TO_ORIENT and make the right
 motor go forward. 
 */
 void checkBackLine(void) {
-
+  if (backLeftLineDetected() || backRightLineDetected()) {
+    innerState = TURNING_COUNTER_CLOCKWISE_TO_ORIENT;
+    rightMotorForward();
+  }
 }
 
 
@@ -120,16 +140,22 @@ If the front right line sensor detects a line, then the innerState should be cha
 to TURNING_CLOCKWISE_TO_ATTACK and the right motor should be reversed.
 */
 void checkFrontRightLine(void) {
-
+  if (frontRightLineDetected()) {
+    innerState = TURNING_CLOCKWISE_TO_ATTACK;
+    rightMotorReverse();
+  }
 }
 
 
 /*
 If the front left line sensor detects a line, then the innerState should be changed
-to MOVING_FORWAR_TO_ATTACK and the right motor should go forward.
+to MOVING_FORWARD_TO_ATTACK and the right motor should go forward.
 */
 void checkFrontLeftLine(void) {
-
+  if (frontLeftLineDetected()) {
+    innerState = MOVING_FORWARD_TO_ATTACK;
+    rightMotorForward();
+  }
 }
 
 
@@ -142,8 +168,7 @@ void checkWall(void) {
   if (wallDetected == false) {
 
     //check if wall is close
-    
-    if (/*Fill this in!!!*/) {
+    if (wallIsClose()) {
       wallTimer.begin(startAttackingRightWall, 1500000);
       wallDetected = true;
     }
@@ -170,7 +195,10 @@ If the back right line sensor detects a line, then the innerState should be chan
 to TURNING_COUNTER_CLOCKWISE_TO_ATTACK and the right motor should go forward.
 */
 void checkBackRightLine(void) {
-
+  if (backRightLineDetected()) {
+    innerState = TURNING_COUNTER_CLOCKWISE_TO_ATTACK;
+    rightMotorForward();
+  }
 }
 
 
@@ -179,7 +207,61 @@ If the back left line sensor detects a line, then the innerState should be chang
 to MOVING_BACKWARD_TO_ATTACK and the right motor should reverse.
 */
 void checkBackLeftLine(void) {
+  if (backLeftLineDetected()) {
+    innerState = MOVING_BACKWARD_TO_ATTACK;
+    rightMotorReverse();
+  }
+}
 
+
+
+/*
+Returns true if the front left line is detected, false otherwise
+*/
+bool frontLeftLineDetected(void) {
+  //fill this out
+  return true;
+}
+
+/*
+Returns true if the front right line is detected, false otherwise
+*/
+bool frontRightLineDetected(void) {
+  //fill this out
+  return true;
+
+}
+
+/*
+Returns true if the back left line is detected, false otherwise
+*/
+bool backLeftLineDetected(void) {
+  //fill this out
+  return true;
+}
+
+/*
+Returns true if the back right line is detected, false otherwise
+*/
+bool backRightLineDetected(void) {
+  //fill this out
+  return true;
+}
+
+/*
+Returns true if the beacon is aligned, false otherwise
+*/
+bool beaconIsAligned(void) {
+  //fill this out
+  return true;
+}
+
+/*
+Returns true if the wall is clse, false otherwise
+*/
+bool wallIsClose(void) {
+  //fill this out
+  return true;
 }
 
 
@@ -190,7 +272,7 @@ void checkBackLeftLine(void) {
 Moves right motor in forward direction
 */
 void rightMotorForward(void) {
-
+  //fill this out
 }
 
 
@@ -198,7 +280,7 @@ void rightMotorForward(void) {
 Moves left motor in forward direction
 */
 void leftMotorForward(void) {
-
+  //fill this out
 }
 
 
@@ -206,7 +288,7 @@ void leftMotorForward(void) {
 Moves right motor in reverse direction
 */
 void rightMotorReverse(void) {
-
+  //fill this out
 }
 
 
@@ -214,7 +296,5 @@ void rightMotorReverse(void) {
 Moves left motor in reverse direction
 */
 void leftMotorReverse(void) {
-
+  //fill this out
 }
-
-
