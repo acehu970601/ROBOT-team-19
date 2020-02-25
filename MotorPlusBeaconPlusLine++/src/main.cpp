@@ -12,7 +12,6 @@
 #define rightMotorDirPin2        8
 
 #define photoTransistorPin       17
-
 #define rightBackLinePin         20
 #define rightFrontLinePin        21
 #define leftBackLinePin          22
@@ -20,30 +19,31 @@
 
 //Threshold values
 //#define beaconValueThre          230
-#define beaconDiffThre           5
+#define beaconDiffThre           35
 #define beaconCountThre          3
 
-#define LinethresholdLOW         800
-#define LinethresholdHIGH        830
+#define LinethresholdLOW         900
+#define LinethresholdHIGH        930
 #define Errorthreshold           1000
 
 //State
 typedef enum {
-  STATE_FORWARD, STATE_READY,STATE_FIND_THRESHOLD, STATE_BEACON, STATE_BACKWARD, STATE_FIRSTTURN, STATE_REST
+  STATE_FORWARD, STATE_READY,STATE_FIND_THRESHOLD, STATE_BEACON, STATE_BACKWARD, STATE_FIRSTTURN, STATE_REST, STATE_PUSHLEFT
 } States_t;
 
 //Timer
 IntervalTimer peakTracker;
 static Metro readyTimer = Metro(3000);
-static Metro firstTurnTimer = Metro(1000);
+static Metro firstTurnTimer = Metro(580);
 static Metro checkThresholdTimer = Metro(8000);
+static Metro pushLeftTimer = Metro(3000);
 
 //Variables
 States_t state = STATE_READY;
 //Motor
-const int forCoeff = 50;
-const int backCoeff = 30;
-const int turnCoeff = 30;
+const int forCoeff = 70;
+const int backCoeff = 45;
+const int turnCoeff = 45;
 //Beacon
 unsigned int photoTransistorVoltage = 2000;
 unsigned int peakHeight = 2000;
@@ -66,16 +66,17 @@ bool readyTimerExpired(void);
 bool firstTurnTimerExpired(void);
 bool checkThresholdExpired(void);
 bool beaconDetected(void);
-bool maxDetected(void);
 bool leftFrontLineDetected(void);
 bool leftBackLineDetected(void);
 bool rightFrontLineDetected(void);
 bool rightBackLineDetected(void);
+bool pushLeftTimerExpired(void);
 //Actions
 void startDetectingThreshold(void);
 void startDetectingBeacon(void);
 void moveBackward(void);
 void startFirstTurn(void);
+void pushLeft(void);
 void rest(void); 
 //Motor
 void leftMotorFor(int);
@@ -130,8 +131,10 @@ void loop() {
       if(rightBackLineDetected()) startFirstTurn();
       break;
     case STATE_FIRSTTURN:
-      if(firstTurnTimerExpired()) rest();
+     if(firstTurnTimerExpired()) pushLeft();
       break;
+    case STATE_PUSHLEFT:
+      if(pushLeftTimerExpired()) rest();
     case STATE_REST:
       break;
     default:
@@ -238,12 +241,18 @@ bool rightBackLineDetected(){
   prevVol = rightBackLineVoltage;
   return event;
 }
+
+bool pushLeftTimerExpired(){
+  return pushLeftTimer.check();
+}
+
 void startDetectingThreshold(){
   state= STATE_FIND_THRESHOLD;
   leftMotorFor(turnCoeff);
   rightMotorBack(turnCoeff);
   // peakTracker.begin(findBeaconThreshold, 1000);
 }
+
 void startDetectingBeacon(){
   state = STATE_BEACON;
   leftMotorBack(turnCoeff);
@@ -264,6 +273,13 @@ void startFirstTurn(){
   leftMotorBack(turnCoeff);
   rightMotorFor(turnCoeff);
 };
+
+void pushLeft(){
+  state = STATE_PUSHLEFT;
+  pushLeftTimer.reset();
+  leftMotorFor(forCoeff);
+  rightMotorFor(forCoeff);
+}
 
 void rest(){
   state = STATE_REST;
