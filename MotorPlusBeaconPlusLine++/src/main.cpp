@@ -17,6 +17,15 @@
 #define leftBackLinePin          22
 #define leftFrontLinePin         23
 
+#define leftFrontUltraTrigPin     13
+#define leftFrontUltraEchoPin     12
+#define rightFrontUltraTrigPin    14
+#define rightFrontUltraEchoPin    11
+#define leftBackUltraTrigPin      15
+#define leftBackUltraEchoPin      10
+#define rightBackUltraTrigPin     16
+#define rightBackUltraEchoPin     9
+
 //Threshold values
 #define beaconDiffThre           35
 #define beaconCountThre          1
@@ -25,17 +34,22 @@
 #define LinethresholdHIGH        930
 #define Errorthreshold           1000
 
-//Timer 
-#define 
+#define wallThresHigh            50
+#define wallThresLow             40
+
+
 
 //State
 typedef enum {
-  STATE_FORWARD, STATE_READY,STATE_FIND_THRESHOLD, STATE_BEACON, STATE_BACKWARD, STATE_FIRSTTURN, STATE_REST, STATE_PUSHLEFT,ATTACKING_LEFT_WALL,MOVING_FORWARD_TO_ATTACK,TURNING_CLOCKWISE_TO_ATTACK
+  STATE_FORWARD, STATE_READY,STATE_FIND_THRESHOLD, STATE_BEACON, STATE_BACKWARD, STATE_FIRSTTURN, STATE_REST,
+  ATTACKING_LEFT_WALL,MOVING_FORWARD_TO_ATTACK,TURNING_CLOCKWISE_TO_ATTACK,
+  ATTACKING_RIGHT_WALL,MOVING_BACKWARD_TO_ATTACK,TURNING_COUNTER_CLOCKWISE_TO_ATTACK
 } States_t;
 States_t innerState=MOVING_FORWARD_TO_ATTACK;
 
 //Timer
 IntervalTimer peakTracker;
+IntervalTimer unitTimer;
 static Metro readyTimer = Metro(2000);
 static Metro firstTurnTimer = Metro(580);
 static Metro checkThresholdTimer = Metro(3000);
@@ -65,30 +79,48 @@ int leftBackLineVoltage=0;
 int rightFrontLineVoltage=0;
 int rightBackLineVoltage=0;
 //Wall
-bool wallDetected=false;
+bool leftWallDetected=false;
+bool rightWallDetected=false;
+//Ultrasonic
+const int trigPeriod = 20000;
+int timer = 0;
+int leftFrontEchoRiseTime = 0;
+int leftFrontEchoFallTime = 0;
+int rightFrontEchoRiseTime = 0;
+int rightFrontEchoFallTime = 0;
+int leftBackEchoRiseTime = 0;
+int leftBackEchoFallTime = 0;
+int rightBackEchoRiseTime = 0;
+int rightBackEchoFallTime = 0;
+int leftFrontDis = 8888888;
+int rightFrontDis = 8888888;
+int leftBackDis = 8888888;
+int rightBackDis = 8888888;
 
 //Functions
 //Events
 bool readyTimerExpired(void);
 bool firstTurnTimerExpired(void);
 bool checkThresholdExpired(void);
+bool checkwallTimerexpired(void);
 bool beaconDetected(void);
 bool leftFrontLineDetected(void);
 bool leftBackLineDetected(void);
 bool rightFrontLineDetected(void);
 bool rightBackLineDetected(void);
-bool pushLeftTimerExpired(void);
+bool eventleftFrontWallTouched(void);
+bool eventrightFrontWallTouched(void);
 bool wallIsClose(void);
 //Actions
 void startDetectingThreshold(void);
 void startDetectingBeacon(void);
 void moveBackward(void);
 void startFirstTurn(void);
-void pushLeft(void);
 void rest(void); 
 
 //Line
 void checkFrontRightLine(void);
+void checkFrontLeftLine(void);
 
 //Motor
 void leftMotorFor(int);
@@ -107,6 +139,19 @@ void findBeaconThreshold(void);
 void checkWall(void);
 void startAttackingRightWall(void);
 void startAttackingLeft(void);
+void startAttackingRight(void);
+
+//Ultrasonoic
+void timerCount(void);
+void leftFrontEchoRise(void);
+void leftFrontEchoFall(void);
+void rightFrontEchoRise(void);
+void rightFrontEchoFall(void);
+void leftBackEchoRise(void);
+void leftBackEchoFall(void);
+void rightBackEchoRise(void);
+void rightBackEchoFall(void);
+
 
 
 void setup() {
@@ -125,6 +170,29 @@ void setup() {
   pinMode(leftBackLinePin, INPUT);
   pinMode(rightFrontLinePin, INPUT);
   pinMode(rightBackLinePin, INPUT);
+  //Ultrasonic
+  pinMode(leftFrontUltraTrigPin, OUTPUT);
+  pinMode(rightFrontUltraTrigPin, OUTPUT);
+  pinMode(leftBackUltraTrigPin, OUTPUT);
+  pinMode(rightBackUltraTrigPin, OUTPUT);
+  digitalWrite(leftFrontUltraTrigPin, LOW);  
+  digitalWrite(rightFrontUltraTrigPin, LOW);
+  digitalWrite(leftBackUltraTrigPin, LOW);
+  digitalWrite(rightBackUltraTrigPin, LOW);
+  pinMode(leftFrontUltraEchoPin, INPUT);
+  pinMode(rightFrontUltraEchoPin, INPUT);
+  pinMode(leftBackUltraEchoPin, INPUT);
+  pinMode(rightBackUltraEchoPin, INPUT);
+
+  unitTimer.begin(timerCount, 5);
+  attachInterrupt(digitalPinToInterrupt(leftFrontUltraEchoPin), leftFrontEchoRise, RISING);
+  attachInterrupt(digitalPinToInterrupt(leftFrontUltraEchoPin), leftFrontEchoFall, FALLING);
+  attachInterrupt(digitalPinToInterrupt(rightFrontUltraEchoPin), rightFrontEchoRise, RISING);
+  attachInterrupt(digitalPinToInterrupt(rightFrontUltraEchoPin), rightFrontEchoFall, FALLING); 
+  attachInterrupt(digitalPinToInterrupt(leftBackUltraEchoPin), leftBackEchoRise, RISING);
+  attachInterrupt(digitalPinToInterrupt(leftBackUltraEchoPin), leftBackEchoFall, FALLING);   
+  attachInterrupt(digitalPinToInterrupt(rightBackUltraEchoPin), rightBackEchoRise, RISING);
+  attachInterrupt(digitalPinToInterrupt(rightBackUltraEchoPin), rightBackEchoFall, FALLING);
   
   Serial.begin(9600);
 }
@@ -152,17 +220,9 @@ void loop() {
       if(rightBackLineDetected()) startFirstTurn();
       // if(leftBackLineDetected()) rest();
       // if(rightBackLineDetected()) rest();
-      // leftFrontLineDetected();
-      // rightFrontLineDetected();
-      // if(rightFrontLineDetected()) {
-      //   digitalWrite(ledPin, HIGH);
-      //   rest();
-      //   }
-      // if(rightFrontLineDetected()) rest();
       break;
     case STATE_FIRSTTURN:
-    //  if(firstTurnTimerExpired()) pushLeft();
-      if(leftFrontLineDetected()) startAttackingLeft;
+      if(leftFrontLineDetected()) startAttackingLeft();
       break;
     case ATTACKING_LEFT_WALL:
       switch (innerState) {
@@ -173,7 +233,20 @@ void loop() {
         case TURNING_CLOCKWISE_TO_ATTACK:
           checkFrontLeftLine();
           break;
-      }  
+      }
+      //  CAUTION:might expire before reset!!
+      if (checkwallTimerexpired())  startAttackingRight();
+      break;
+    case ATTACKING_RIGHT_WALL:
+      switch (innerState) {
+        case MOVING_BACKWARD_TO_ATTACK:
+          checkBackRightLine();
+          break;
+        case TURNING_COUNTER_CLOCKWISE_TO_ATTACK:
+          checkBackLeftLine();
+          break;
+      }
+      break;  
     case STATE_REST:
       break;
     default:
@@ -199,6 +272,9 @@ bool firstTurnTimerExpired(){
 }
 bool checkThresholdExpired(){
   return checkThresholdTimer.check();
+}
+bool checkwallTimerexpired(){
+  return wallTimer.check();
 }
 bool leftFrontLineDetected(){
   leftFrontLineVoltage = analogRead(leftFrontLinePin);
@@ -282,9 +358,9 @@ bool rightBackLineDetected(){
   return event;
 }
 
-bool pushLeftTimerExpired(){
-  return pushLeftTimer.check();
-}
+// bool pushLeftTimerExpired(){
+//   return pushLeftTimer.check();
+// }
 
 void startDetectingThreshold(){
   state= STATE_FIND_THRESHOLD;
@@ -315,12 +391,12 @@ void startFirstTurn(){
   rightMotorFor(turnCoeff);
 };
 
-void pushLeft(){
-  state = STATE_PUSHLEFT;
-  pushLeftTimer.reset();
-  leftMotorFor(forCoeff);
-  rightMotorFor(forCoeff);
-}
+// void pushLeft(){
+//   state = STATE_PUSHLEFT;
+//   pushLeftTimer.reset();
+//   leftMotorFor(forCoeff);
+//   rightMotorFor(forCoeff);
+// }
 
 void rest(){
   state = STATE_REST;
@@ -419,7 +495,12 @@ void startAttackingLeft(){
   leftMotorFor(forCoeff);
   rightMotorFor(forCoeff);
 }
-
+void startAttackingRight(){
+  state = ATTACKING_RIGHT_WALL;
+  innerState = MOVING_BACKWARD_TO_ATTACK;
+  leftMotorFor(backCoeff);
+  rightMotorFor(backCoeff);
+}
 void checkFrontRightLine() {
   if (rightFrontLineDetected()) {
     innerState = TURNING_CLOCKWISE_TO_ATTACK;
@@ -434,15 +515,89 @@ If the wall is close, then the wallTimer begins for 1.5 seconds and the wallDete
 variable is set to "true". If the wall has been detected, then the function does nothing.
 */
 void checkWall() {
-  if (wallDetected == false) {
+  if (leftWallDetected == false) {
     //check if wall is close
     if (wallIsClose()) {
       wallTimer.reset();
-      wallDetected = true;
+      leftWallDetected = true;
+      leftMotorFor(forCoeff);
+      rightMotorFor(forCoeff);      
     }
   } 
 }
 
 bool wallIsClose(){
-  // need to detect if wall is close
+  bool wallTouched= true;
+  (eventleftFrontWallTouched() || eventrightFrontWallTouched())? wallTouched=true:wallTouched=false;
+  return wallTouched;
+}
+
+void checkFrontLeftLine(void) {
+  if (leftFrontLineDetected()) {
+    innerState = MOVING_FORWARD_TO_ATTACK;
+    leftMotorFor(forCoeff);
+    rightMotorFor(forCoeff);
+  }
+}
+
+void timerCount(){
+  timer ++;
+  if(timer >= trigPeriod){
+    timer = 0;
+    digitalWrite(leftFrontUltraTrigPin, HIGH);
+    digitalWrite(rightFrontUltraTrigPin, HIGH);
+  }
+  if(timer == 2){
+    digitalWrite(leftFrontUltraTrigPin, LOW);
+    digitalWrite(rightFrontUltraTrigPin, LOW);
+  }
+}
+
+void leftFrontEchoRise(){
+  leftFrontEchoRiseTime = timer;
+}
+
+void leftFrontEchoFall(){
+  leftFrontEchoFallTime = timer;
+  leftFrontDis = (leftFrontEchoFallTime - leftFrontEchoRiseTime)*0.85 - 80; //mm
+}
+
+void rightFrontEchoRise(){
+  rightFrontEchoRiseTime = timer;
+}
+
+void rightFrontEchoFall(){
+  rightFrontEchoFallTime = timer;
+  rightFrontDis = (rightFrontEchoFallTime - rightFrontEchoRiseTime)*0.85 - 80; //mm
+}
+
+
+bool eventleftFrontWallTouched(){
+  static int leftwallThres = wallThresLow;
+  static int leftprevDis = 8888888;
+  bool event = false;
+  if(leftFrontDis < leftwallThres && leftprevDis >= leftwallThres){
+    event = true;
+    leftwallThres = wallThresHigh;
+  }
+  if(leftFrontDis >= leftwallThres && leftprevDis < leftwallThres){
+    leftwallThres = wallThresLow;
+  }
+  leftprevDis = leftFrontDis;
+  return event;
+}
+
+bool eventrightFrontWallTouched(){
+  static int rightwallThres = wallThresLow;
+  static int rightprevDis = 8888888;
+  bool event = false;
+  if(leftFrontDis < rightwallThres && rightprevDis >= rightwallThres){
+    event = true;
+    rightwallThres = wallThresHigh;
+  }
+  if(rightFrontDis >= rightwallThres && rightprevDis < rightwallThres){
+    rightwallThres = wallThresLow;
+  }
+  rightprevDis = rightFrontDis;
+  return event;
 }
