@@ -28,7 +28,7 @@ IntervalTimer wallTimer;
 
 //State definitions
 typedef enum {
-  ORIENTING, ATTACKING_LEFT_WALL, ATTACKING_RIGHT_WALL, MOVING_FORWARD_TO_ATTACK, MOVING_BACKWARD_TO_ATTACK, MOVING_BACKWARD_TO_ORIENT, TURNING_CLOCKWISE_TO_ATTACK, TURNING_COUNTER_CLOCKWISE_TO_ORIENT, TURNING_COUNTER_CLOCKWISE_TO_ATTACK 
+  ORIENTING, ATTACKING_LEFT_WALL, ATTACKING_RIGHT_WALL, MOVING_FORWARD_TO_ATTACK, MOVING_BACKWARD_TO_ATTACK, MOVING_BACKWARD_TO_ORIENT, TURNING_CLOCKWISE_TO_ATTACK, TURNING_COUNTER_CLOCKWISE_TO_ORIENT, TURNING_COUNTER_CLOCKWISE_TO_ATTACK
 } States_t;
 
 //Variables
@@ -75,11 +75,11 @@ void loop() {
         case TURNING_CLOCKWISE_TO_ATTACK:
           checkFrontLeftLine();
           break;
-      }  
+      }
 
       break;
     case ATTACKING_RIGHT_WALL:
-      
+
       switch (innerState) {
         case MOVING_BACKWARD_TO_ATTACK:
           checkBackRightLine();
@@ -87,11 +87,11 @@ void loop() {
         case TURNING_COUNTER_CLOCKWISE_TO_ATTACK:
           checkBackLeftLine();
           break;
-      }  
+      }
 
       break;
   }
-      
+
 }
 
 
@@ -111,8 +111,8 @@ void checkOrientation(void) {
 
 
 /*
-If the beacon is aligned, then this function should change the innerState to 
-MOVING_BACKWARD_TO_ORIENT and reverse the right motor. 
+If the beacon is aligned, then this function should change the innerState to
+MOVING_BACKWARD_TO_ORIENT and reverse the right motor.
 */
 void checkBeaconAlignment(void) {
   if (beaconIsAligned()) {
@@ -124,8 +124,8 @@ void checkBeaconAlignment(void) {
 
 /*
 If the back left or back right line sensors detect a line, then this function should
-change the innerState to TURNING_COUNTER_CLOCKWISE_TO_ORIENT and make the right 
-motor go forward. 
+change the innerState to TURNING_COUNTER_CLOCKWISE_TO_ORIENT and make the right
+motor go forward.
 */
 void checkBackLine(void) {
   if (backLeftLineDetected() || backRightLineDetected()) {
@@ -172,13 +172,13 @@ void checkWall(void) {
       wallTimer.begin(startAttackingRightWall, 1500000);
       wallDetected = true;
     }
-  } 
+  }
 }
 
 
 /*
-This function is called when the wallTiemr expires. It ends the wallTimer, 
-changes the outerState to ATTACKING_RIGHT_WALL, the innerState to 
+This function is called when the wallTiemr expires. It ends the wallTimer,
+changes the outerState to ATTACKING_RIGHT_WALL, the innerState to
 MOVING_BACKWARD_TO_ATTACK, and both motors to reverse.
 */
 void startAttackingRightWall(void) {

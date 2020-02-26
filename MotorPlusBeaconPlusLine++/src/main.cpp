@@ -25,10 +25,14 @@
 #define LinethresholdHIGH        930
 #define Errorthreshold           1000
 
+//Timer 
+#define 
+
 //State
 typedef enum {
-  STATE_FORWARD, STATE_READY,STATE_FIND_THRESHOLD, STATE_BEACON, STATE_BACKWARD, STATE_FIRSTTURN, STATE_REST, STATE_PUSHLEFT
+  STATE_FORWARD, STATE_READY,STATE_FIND_THRESHOLD, STATE_BEACON, STATE_BACKWARD, STATE_FIRSTTURN, STATE_REST, STATE_PUSHLEFT,ATTACKING_LEFT_WALL,MOVING_FORWARD_TO_ATTACK,TURNING_CLOCKWISE_TO_ATTACK
 } States_t;
+States_t innerState=MOVING_FORWARD_TO_ATTACK;
 
 //Timer
 IntervalTimer peakTracker;
@@ -36,6 +40,7 @@ static Metro readyTimer = Metro(2000);
 static Metro firstTurnTimer = Metro(580);
 static Metro checkThresholdTimer = Metro(3000);
 static Metro pushLeftTimer = Metro(3000);
+static Metro wallTimer=Metro(3000);
 
 //Variables
 States_t state = STATE_READY;
@@ -59,6 +64,8 @@ int leftFrontLineVoltage=0;
 int leftBackLineVoltage=0;
 int rightFrontLineVoltage=0;
 int rightBackLineVoltage=0;
+//Wall
+bool wallDetected=false;
 
 //Functions
 //Events
@@ -71,6 +78,7 @@ bool leftBackLineDetected(void);
 bool rightFrontLineDetected(void);
 bool rightBackLineDetected(void);
 bool pushLeftTimerExpired(void);
+bool wallIsClose(void);
 //Actions
 void startDetectingThreshold(void);
 void startDetectingBeacon(void);
@@ -78,6 +86,10 @@ void moveBackward(void);
 void startFirstTurn(void);
 void pushLeft(void);
 void rest(void); 
+
+//Line
+void checkFrontRightLine(void);
+
 //Motor
 void leftMotorFor(int);
 void rightMotorFor(int);
@@ -91,6 +103,10 @@ void detectBeacon(void);
 void detectBeaconThreshold(void);
 void peakHeightComparison(void);
 void findBeaconThreshold(void);
+//Wall
+void checkWall(void);
+void startAttackingRightWall(void);
+void startAttackingLeft(void);
 
 
 void setup() {
@@ -132,23 +148,32 @@ void loop() {
       //   }
       break;
     case STATE_BACKWARD:
-      // if(leftBackLineDetected()) startFirstTurn();
-      // if(rightBackLineDetected()) startFirstTurn();
+      if(leftBackLineDetected()) startFirstTurn();
+      if(rightBackLineDetected()) startFirstTurn();
       // if(leftBackLineDetected()) rest();
       // if(rightBackLineDetected()) rest();
       // leftFrontLineDetected();
       // rightFrontLineDetected();
-      if(rightFrontLineDetected()) {
-        digitalWrite(ledPin, HIGH);
-        rest();
-        }
+      // if(rightFrontLineDetected()) {
+      //   digitalWrite(ledPin, HIGH);
+      //   rest();
+      //   }
       // if(rightFrontLineDetected()) rest();
       break;
     case STATE_FIRSTTURN:
-     if(firstTurnTimerExpired()) pushLeft();
+    //  if(firstTurnTimerExpired()) pushLeft();
+      if(leftFrontLineDetected()) startAttackingLeft;
       break;
-    case STATE_PUSHLEFT:
-      if(pushLeftTimerExpired()) rest();
+    case ATTACKING_LEFT_WALL:
+      switch (innerState) {
+        case MOVING_FORWARD_TO_ATTACK:
+          checkFrontRightLine();
+          checkWall();
+          break;
+        case TURNING_CLOCKWISE_TO_ATTACK:
+          checkFrontLeftLine();
+          break;
+      }  
     case STATE_REST:
       break;
     default:
@@ -285,7 +310,7 @@ void moveBackward(){
 
 void startFirstTurn(){
   state = STATE_FIRSTTURN;
-  firstTurnTimer.reset();
+  // firstTurnTimer.reset();
   leftMotorBack(turnCoeff);
   rightMotorFor(turnCoeff);
 };
@@ -388,6 +413,36 @@ void peakHeightComparison(){
   }
 };
 
-void findBeaconThreshold(){
-  Serial.println(beaconValueThre);
+void startAttackingLeft(){
+  state = ATTACKING_LEFT_WALL;
+  innerState = MOVING_FORWARD_TO_ATTACK;
+  leftMotorFor(forCoeff);
+  rightMotorFor(forCoeff);
+}
+
+void checkFrontRightLine() {
+  if (rightFrontLineDetected()) {
+    innerState = TURNING_CLOCKWISE_TO_ATTACK;
+    leftMotorBack(turnCoeff);
+    rightMotorFor(turnCoeff);
+  }
+}
+
+/*
+If the wall has not yet been detected, then this function checks if the wall is close.
+If the wall is close, then the wallTimer begins for 1.5 seconds and the wallDetected
+variable is set to "true". If the wall has been detected, then the function does nothing.
+*/
+void checkWall() {
+  if (wallDetected == false) {
+    //check if wall is close
+    if (wallIsClose()) {
+      wallTimer.reset();
+      wallDetected = true;
+    }
+  } 
+}
+
+bool wallIsClose(){
+  // need to detect if wall is close
 }
