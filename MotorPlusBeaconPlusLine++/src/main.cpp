@@ -18,9 +18,8 @@
 #define leftFrontLinePin         23
 
 //Threshold values
-//#define beaconValueThre          230
 #define beaconDiffThre           35
-#define beaconCountThre          3
+#define beaconCountThre          1
 
 #define LinethresholdLOW         900
 #define LinethresholdHIGH        930
@@ -33,17 +32,18 @@ typedef enum {
 
 //Timer
 IntervalTimer peakTracker;
-static Metro readyTimer = Metro(3000);
+static Metro readyTimer = Metro(2000);
 static Metro firstTurnTimer = Metro(580);
-static Metro checkThresholdTimer = Metro(8000);
+static Metro checkThresholdTimer = Metro(3000);
 static Metro pushLeftTimer = Metro(3000);
 
 //Variables
 States_t state = STATE_READY;
 //Motor
-const int forCoeff = 70;
-const int backCoeff = 45;
-const int turnCoeff = 45;
+const int forCoeff = 60;
+const int backCoeff = 40;
+const int findCoeff = 30;
+const int turnCoeff = 30;
 //Beacon
 unsigned int photoTransistorVoltage = 2000;
 unsigned int peakHeight = 2000;
@@ -53,7 +53,7 @@ unsigned int beaconValueThre= 2000;
 unsigned int oldPeakHeight = 2000;
 unsigned int beaconCount=0;
 unsigned int thresholdCount=0;
-unsigned int MaxCountThreshold=10;
+unsigned int MaxCountThreshold=4;
 //Line
 int leftFrontLineVoltage=0;
 int leftBackLineVoltage=0;
@@ -120,15 +120,29 @@ void loop() {
       break;
     case STATE_FIND_THRESHOLD:
       detectBeaconThreshold();
-      if(checkThresholdExpired()) startDetectingBeacon();
+      if(checkThresholdExpired()) {
+        startDetectingBeacon();
+        }
       break;
     case STATE_BEACON:
       detectBeacon();
       if(beaconDetected()) moveBackward();
+      // if(beaconDetected()) {
+      //   rest();
+      //   }
       break;
     case STATE_BACKWARD:
-      if(leftBackLineDetected()) startFirstTurn();
-      if(rightBackLineDetected()) startFirstTurn();
+      // if(leftBackLineDetected()) startFirstTurn();
+      // if(rightBackLineDetected()) startFirstTurn();
+      // if(leftBackLineDetected()) rest();
+      // if(rightBackLineDetected()) rest();
+      // leftFrontLineDetected();
+      // rightFrontLineDetected();
+      if(rightFrontLineDetected()) {
+        digitalWrite(ledPin, HIGH);
+        rest();
+        }
+      // if(rightFrontLineDetected()) rest();
       break;
     case STATE_FIRSTTURN:
      if(firstTurnTimerExpired()) pushLeft();
@@ -147,12 +161,11 @@ bool readyTimerExpired(){
 }
 
 bool beaconDetected(){
-  static int prevBeaconCount = 0;
+  // static int prevBeaconCount = 0;
   bool eventBeacon = false;
-  if(beaconCount >= beaconCountThre && prevBeaconCount < beaconCountThre){
+  if(beaconCount >= beaconCountThre){
     eventBeacon = true;
   }
-  prevBeaconCount = beaconCount;
   return eventBeacon;
 };
 
@@ -167,6 +180,7 @@ bool leftFrontLineDetected(){
   static int lineThres = LinethresholdHIGH;
   static int prevVol = 0;
   bool event = false;
+  Serial.println(leftFrontLineVoltage);
   if(leftFrontLineVoltage > Errorthreshold){
     Serial.println("leftFrontLineError!");
     return false;
@@ -207,6 +221,7 @@ bool rightFrontLineDetected(){
   static int lineThres = LinethresholdHIGH;
   static int prevVol = 0;
   bool event = false;
+  Serial.println(rightFrontLineVoltage);
   if(rightFrontLineVoltage > Errorthreshold){
     Serial.println("rightFrontLineError!");
     return false;
@@ -248,9 +263,10 @@ bool pushLeftTimerExpired(){
 
 void startDetectingThreshold(){
   state= STATE_FIND_THRESHOLD;
-  leftMotorFor(turnCoeff);
-  rightMotorBack(turnCoeff);
-  // peakTracker.begin(findBeaconThreshold, 1000);
+  leftMotorFor(findCoeff);
+  rightMotorBack(findCoeff);
+  checkThresholdTimer.reset();
+
 }
 
 void startDetectingBeacon(){
@@ -347,6 +363,7 @@ void detectBeacon(){
   photoTransistorVoltage = analogRead(photoTransistorPin);
   if(photoTransistorVoltage < peakHeight){
     peakHeight = photoTransistorVoltage;
+    Serial.println(peakHeight);
   }
 }
 
@@ -360,18 +377,15 @@ void detectBeaconThreshold(){
   }
   prevVoltage=currVoltage;
   if (thresholdCount>MaxCountThreshold){
-    changeTurnDirection(turnCoeff);
+    changeTurnDirection(findCoeff);
     thresholdCount=0;
   }
 }
 
 void peakHeightComparison(){
-  Serial.println(peakHeight);
-  if (abs(peakHeight-oldPeakHeight) < beaconDiffThre && peakHeight < beaconValueThre){
-    beaconCount++;
+  if (peakHeight < beaconValueThre+150){
+    beaconCount=2;
   }
-  oldPeakHeight=peakHeight;
-  peakHeight = 2000;
 };
 
 void findBeaconThreshold(){
