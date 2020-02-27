@@ -51,10 +51,11 @@ States_t innerState=MOVING_FORWARD_TO_ATTACK;
 IntervalTimer peakTracker;
 IntervalTimer unitTimer;
 static Metro readyTimer = Metro(2000);
-static Metro firstTurnTimer = Metro(580);
-static Metro checkThresholdTimer = Metro(3000);
+static Metro firstTurnTimer = Metro(3000);
+static Metro checkThresholdTimer = Metro(7000);
 static Metro pushLeftTimer = Metro(3000);
-static Metro wallTimer=Metro(3000);
+static Metro wallTimer=Metro(2000);
+static Metro totalTime = Metro(50000);
 
 //Variables
 States_t state = STATE_READY;
@@ -121,6 +122,8 @@ void rest(void);
 //Line
 void checkFrontRightLine(void);
 void checkFrontLeftLine(void);
+void checkBackRightLine(void);
+void checkBackLeftLine(void);
 
 //Motor
 void leftMotorFor(int);
@@ -151,6 +154,8 @@ void leftBackEchoRise(void);
 void leftBackEchoFall(void);
 void rightBackEchoRise(void);
 void rightBackEchoFall(void);
+
+void checkTotalTime(void);
 
 
 
@@ -189,15 +194,13 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(leftFrontUltraEchoPin), leftFrontEchoFall, FALLING);
   attachInterrupt(digitalPinToInterrupt(rightFrontUltraEchoPin), rightFrontEchoRise, RISING);
   attachInterrupt(digitalPinToInterrupt(rightFrontUltraEchoPin), rightFrontEchoFall, FALLING); 
-  attachInterrupt(digitalPinToInterrupt(leftBackUltraEchoPin), leftBackEchoRise, RISING);
-  attachInterrupt(digitalPinToInterrupt(leftBackUltraEchoPin), leftBackEchoFall, FALLING);   
-  attachInterrupt(digitalPinToInterrupt(rightBackUltraEchoPin), rightBackEchoRise, RISING);
-  attachInterrupt(digitalPinToInterrupt(rightBackUltraEchoPin), rightBackEchoFall, FALLING);
   
   Serial.begin(9600);
+  
 }
 
 void loop() {
+  checkTotalTime();
   switch (state) {
     case STATE_READY:
       if(readyTimerExpired()) startDetectingThreshold();
@@ -206,7 +209,7 @@ void loop() {
       detectBeaconThreshold();
       if(checkThresholdExpired()) {
         startDetectingBeacon();
-        }
+      }
       break;
     case STATE_BEACON:
       detectBeacon();
@@ -216,8 +219,7 @@ void loop() {
       //   }
       break;
     case STATE_BACKWARD:
-      if(leftBackLineDetected()) startFirstTurn();
-      if(rightBackLineDetected()) startFirstTurn();
+      if(leftBackLineDetected() || rightBackLineDetected()) startFirstTurn();
       // if(leftBackLineDetected()) rest();
       // if(rightBackLineDetected()) rest();
       break;
@@ -232,10 +234,11 @@ void loop() {
           break;
         case TURNING_CLOCKWISE_TO_ATTACK:
           checkFrontLeftLine();
+          checkWall();
           break;
       }
       //  CAUTION:might expire before reset!!
-      if (checkwallTimerexpired())  startAttackingRight();
+      if (leftWallDetected == true && checkwallTimerexpired())  startAttackingRight();
       break;
     case ATTACKING_RIGHT_WALL:
       switch (innerState) {
@@ -484,7 +487,7 @@ void detectBeaconThreshold(){
 }
 
 void peakHeightComparison(){
-  if (peakHeight < beaconValueThre+150){
+  if (peakHeight < beaconValueThre+30){
     beaconCount=2;
   }
 };
@@ -498,14 +501,14 @@ void startAttackingLeft(){
 void startAttackingRight(){
   state = ATTACKING_RIGHT_WALL;
   innerState = MOVING_BACKWARD_TO_ATTACK;
-  leftMotorFor(backCoeff);
-  rightMotorFor(backCoeff);
+  leftMotorBack(backCoeff);
+  rightMotorBack(backCoeff);
 }
 void checkFrontRightLine() {
   if (rightFrontLineDetected()) {
     innerState = TURNING_CLOCKWISE_TO_ATTACK;
-    leftMotorBack(turnCoeff);
-    rightMotorFor(turnCoeff);
+    leftMotorFor(turnCoeff);
+    rightMotorBack(turnCoeff);
   }
 }
 
@@ -518,6 +521,7 @@ void checkWall() {
   if (leftWallDetected == false) {
     //check if wall is close
     if (wallIsClose()) {
+      pinMode(ledPin,LOW);
       wallTimer.reset();
       leftWallDetected = true;
       leftMotorFor(forCoeff);
@@ -527,8 +531,10 @@ void checkWall() {
 }
 
 bool wallIsClose(){
-  bool wallTouched= true;
-  (eventleftFrontWallTouched() || eventrightFrontWallTouched())? wallTouched=true:wallTouched=false;
+  bool wallTouched= false;
+  if (eventleftFrontWallTouched() || eventrightFrontWallTouched()){
+    wallTouched=true;
+  }
   return wallTouched;
 }
 
@@ -600,4 +606,35 @@ bool eventrightFrontWallTouched(){
   }
   rightprevDis = rightFrontDis;
   return event;
+}
+
+/*
+If the back right line sensor detects a line, then the innerState should be changed
+to TURNING_COUNTER_CLOCKWISE_TO_ATTACK and the right motor should go forward.
+*/
+void checkBackRightLine(void) {
+  if (rightBackLineDetected()) {
+    innerState = TURNING_COUNTER_CLOCKWISE_TO_ATTACK;
+    rightMotorFor(turnCoeff);
+    leftMotorBack(turnCoeff);
+  }
+}
+
+/*
+If the back left line sensor detects a line, then the innerState should be changed
+to MOVING_BACKWARD_TO_ATTACK and the right motor should reverse.
+*/
+void checkBackLeftLine(void) {
+  if (leftBackLineDetected()) {
+    innerState = MOVING_BACKWARD_TO_ATTACK;
+    rightMotorBack(backCoeff);
+    leftMotorBack(backCoeff);
+  }
+}
+
+void checkTotalTime(void) {
+  if (totalTime.check() == true) {
+    rest();
+    state = STATE_REST;
+  }
 }
