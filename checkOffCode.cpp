@@ -34,8 +34,8 @@
 #define LinethresholdHIGH        930
 #define Errorthreshold           1000
 
-#define wallThresHigh            50
-#define wallThresLow             40
+#define wallThresHigh            80
+#define wallThresLow             90
 
 
 
@@ -51,11 +51,12 @@ States_t innerState=MOVING_FORWARD_TO_ATTACK;
 IntervalTimer peakTracker;
 IntervalTimer unitTimer;
 static Metro readyTimer = Metro(2000);
-static Metro firstTurnTimer = Metro(580);
-static Metro checkThresholdTimer = Metro(3000);
+static Metro firstTurnTimer = Metro(3000);
+static Metro checkThresholdTimer = Metro(7000);
 static Metro pushLeftTimer = Metro(3000);
-static Metro wallTimer=Metro(3000);
-static Metro totalTime = Metro(60000);
+static Metro wallTimer=Metro(1000);
+static Metro totalTime = Metro(50000);
+static Metro rightWallTimer = Metro(1000);
 
 //Variables
 States_t state = STATE_READY;
@@ -74,6 +75,7 @@ unsigned int oldPeakHeight = 2000;
 unsigned int beaconCount=0;
 unsigned int thresholdCount=0;
 unsigned int MaxCountThreshold=4;
+unsigned int rightWallDetectionCounter = 0;
 //Line
 int leftFrontLineVoltage=0;
 int leftBackLineVoltage=0;
@@ -109,9 +111,12 @@ bool leftFrontLineDetected(void);
 bool leftBackLineDetected(void);
 bool rightFrontLineDetected(void);
 bool rightBackLineDetected(void);
-bool eventleftFrontWallTouched(void);
-bool eventrightFrontWallTouched(void);
+bool eventFrontWallTouched(void);
+bool eventBackWallTouched(void);
 bool wallIsClose(void);
+bool rightWallIsClose(void);
+void checkRightWallTimer(void);
+
 //Actions
 void startDetectingThreshold(void);
 void startDetectingBeacon(void);
@@ -143,6 +148,7 @@ void checkWall(void);
 void startAttackingRightWall(void);
 void startAttackingLeft(void);
 void startAttackingRight(void);
+void checkRightWall(void);
 
 //Ultrasonoic
 void timerCount(void);
@@ -194,6 +200,10 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(leftFrontUltraEchoPin), leftFrontEchoFall, FALLING);
   attachInterrupt(digitalPinToInterrupt(rightFrontUltraEchoPin), rightFrontEchoRise, RISING);
   attachInterrupt(digitalPinToInterrupt(rightFrontUltraEchoPin), rightFrontEchoFall, FALLING); 
+  attachInterrupt(digitalPinToInterrupt(leftBackUltraEchoPin), leftBackEchoRise, RISING);
+  attachInterrupt(digitalPinToInterrupt(leftBackUltraEchoPin), leftBackEchoFall, FALLING);
+  attachInterrupt(digitalPinToInterrupt(rightBackUltraEchoPin), rightBackEchoRise, RISING);
+  attachInterrupt(digitalPinToInterrupt(rightBackUltraEchoPin), rightBackEchoFall, FALLING); 
   
   Serial.begin(9600);
   
@@ -234,18 +244,21 @@ void loop() {
           break;
         case TURNING_CLOCKWISE_TO_ATTACK:
           checkFrontLeftLine();
+          checkWall();
           break;
       }
       //  CAUTION:might expire before reset!!
-      if (checkwallTimerexpired())  startAttackingRight();
+      if (leftWallDetected == true && checkwallTimerexpired())  startAttackingRight();
       break;
     case ATTACKING_RIGHT_WALL:
       switch (innerState) {
         case MOVING_BACKWARD_TO_ATTACK:
           checkBackRightLine();
+          checkRightWall();
           break;
         case TURNING_COUNTER_CLOCKWISE_TO_ATTACK:
           checkBackLeftLine();
+          checkRightWall();
           break;
       }
       break;  
@@ -486,7 +499,7 @@ void detectBeaconThreshold(){
 }
 
 void peakHeightComparison(){
-  if (peakHeight < beaconValueThre+150){
+  if (peakHeight < beaconValueThre+30){
     beaconCount=2;
   }
 };
@@ -506,8 +519,8 @@ void startAttackingRight(){
 void checkFrontRightLine() {
   if (rightFrontLineDetected()) {
     innerState = TURNING_CLOCKWISE_TO_ATTACK;
-    leftMotorBack(turnCoeff);
-    rightMotorFor(turnCoeff);
+    leftMotorFor(turnCoeff);
+    rightMotorBack(turnCoeff);
   }
 }
 
@@ -520,6 +533,7 @@ void checkWall() {
   if (leftWallDetected == false) {
     //check if wall is close
     if (wallIsClose()) {
+      pinMode(ledPin,LOW);
       wallTimer.reset();
       leftWallDetected = true;
       leftMotorFor(forCoeff);
@@ -529,8 +543,18 @@ void checkWall() {
 }
 
 bool wallIsClose(){
-  bool wallTouched= true;
-  (eventleftFrontWallTouched() || eventrightFrontWallTouched())? wallTouched=true:wallTouched=false;
+  bool wallTouched= false;
+  if (eventFrontWallTouched()){
+    wallTouched=true;
+  }
+  return wallTouched;
+}
+
+bool rightWallIsClose(){
+  bool wallTouched= false;
+  if (eventBackWallTouched()){
+    wallTouched=true;
+  }
   return wallTouched;
 }
 
@@ -548,10 +572,14 @@ void timerCount(){
     timer = 0;
     digitalWrite(leftFrontUltraTrigPin, HIGH);
     digitalWrite(rightFrontUltraTrigPin, HIGH);
+    digitalWrite(leftBackUltraTrigPin, HIGH);
+    digitalWrite(rightBackUltraTrigPin, HIGH);
   }
   if(timer == 2){
     digitalWrite(leftFrontUltraTrigPin, LOW);
     digitalWrite(rightFrontUltraTrigPin, LOW);
+    digitalWrite(leftBackUltraTrigPin, LOW);
+    digitalWrite(rightBackUltraTrigPin, LOW);
   }
 }
 
@@ -573,36 +601,54 @@ void rightFrontEchoFall(){
   rightFrontDis = (rightFrontEchoFallTime - rightFrontEchoRiseTime)*0.85 - 80; //mm
 }
 
+void leftBackEchoRise(){
+  leftBackEchoRiseTime = timer;
+}
 
-bool eventleftFrontWallTouched(){
-  static int leftwallThres = wallThresLow;
-  static int leftprevDis = 8888888;
+void leftBackEchoFall(){
+  leftBackEchoFallTime = timer;
+  leftBackDis = (leftBackEchoFallTime - leftBackEchoRiseTime)*0.85 - 80; //mm
+}
+
+void rightBackEchoRise(){
+  rightBackEchoRiseTime = timer;
+}
+
+void rightBackEchoFall(){
+  rightBackEchoFallTime = timer;
+  rightBackDis = (rightBackEchoFallTime - rightBackEchoRiseTime)*0.85 - 80; //mm
+}
+
+bool eventFrontWallTouched(){
+  static int frontWallThres = wallThresLow;
+  static int prevFrontDis = 8888888;
   bool event = false;
-  if(leftFrontDis < leftwallThres && leftprevDis >= leftwallThres){
+  if(leftFrontDis < frontWallThres && prevFrontDis >= frontWallThres){
     event = true;
-    leftwallThres = wallThresHigh;
+    frontWallThres = wallThresHigh;
   }
-  if(leftFrontDis >= leftwallThres && leftprevDis < leftwallThres){
-    leftwallThres = wallThresLow;
+  if(leftFrontDis >= frontWallThres && prevFrontDis < frontWallThres){
+    frontWallThres = wallThresLow;
   }
-  leftprevDis = leftFrontDis;
+  prevFrontDis = leftFrontDis;
   return event;
 }
 
-bool eventrightFrontWallTouched(){
-  static int rightwallThres = wallThresLow;
-  static int rightprevDis = 8888888;
+bool eventBackWallTouched(){
+  static int backWallThres = wallThresLow;
+  static int prevBackDis = 8888888;
   bool event = false;
-  if(leftFrontDis < rightwallThres && rightprevDis >= rightwallThres){
+  if(leftBackDis < backWallThres && prevBackDis >= backWallThres){
     event = true;
-    rightwallThres = wallThresHigh;
+    backWallThres = wallThresHigh;
   }
-  if(rightFrontDis >= rightwallThres && rightprevDis < rightwallThres){
-    rightwallThres = wallThresLow;
+  if(leftBackDis >= backWallThres && prevBackDis < backWallThres){
+    backWallThres = wallThresLow;
   }
-  rightprevDis = rightFrontDis;
+  prevBackDis = leftBackDis;
   return event;
 }
+
 
 /*
 If the back right line sensor detects a line, then the innerState should be changed
@@ -634,3 +680,19 @@ void checkTotalTime(void) {
     state = STATE_REST;
   }
 }
+void checkRightWall(void) {
+  if (rightWallIsClose() && rightWallDetectionCounter == 0) {
+    rightWallDetected = true;
+    rightWallDetectionCounter ++;
+    rightWallTimer.reset();
+  }
+  checkRightWallTimer();
+}
+
+void checkRightWallTimer(void) {
+  if (rightWallTimer.check() == true && rightWallDetectionCounter > 0) {
+    rest();
+    state = STATE_REST;
+  }
+}
+
