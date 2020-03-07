@@ -61,10 +61,10 @@ static Metro rightWallTimer = Metro(1000);
 //Variables
 States_t state = STATE_READY;
 //Motor
-const int forCoeff = 60;
-const int backCoeff = 40;
-const int findCoeff = 30;
-const int turnCoeff = 30;
+const int forCoeff = 100;
+const int backCoeff = 100;
+const int findCoeff = 65;
+const int turnCoeff = 65;
 //Beacon
 unsigned int photoTransistorVoltage = 2000;
 unsigned int peakHeight = 2000;
@@ -240,11 +240,11 @@ void loop() {
       switch (innerState) {
         case MOVING_FORWARD_TO_ATTACK:
           checkFrontRightLine();
-          checkWall();
+          //checkWall();
           break;
         case TURNING_CLOCKWISE_TO_ATTACK:
           checkFrontLeftLine();
-          checkWall();
+          //checkWall();
           break;
       }
       //  CAUTION:might expire before reset!!
