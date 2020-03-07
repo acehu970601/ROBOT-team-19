@@ -248,7 +248,7 @@ void loop() {
           break;
       }
       //  CAUTION:might expire before reset!!
-      if (leftWallDetected == true && checkwallTimerexpired())  startAttackingRight();
+      //if (leftWallDetected == true && checkwallTimerexpired()) startAttackingRight();
       break;
     case ATTACKING_RIGHT_WALL:
       switch (innerState) {
