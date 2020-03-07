@@ -55,7 +55,7 @@ static Metro firstTurnTimer = Metro(3000);
 static Metro checkThresholdTimer = Metro(7000);
 static Metro pushLeftTimer = Metro(3000);
 static Metro wallTimer=Metro(1000);
-static Metro totalTime = Metro(50000);
+static Metro totalTime = Metro(130000);
 static Metro rightWallTimer = Metro(1000);
 
 //Variables
